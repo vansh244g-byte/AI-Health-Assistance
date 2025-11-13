@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Health Assistance — Web Dashboard</title>
+  <style>
+    :root{--accent:#2b7a78;--muted:#666}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#f6f7fb;margin:0;color:#222}
+    .app{max-width:1100px;margin:28px auto;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(20,20,60,0.06);overflow:hidden}
+    header{padding:18px 24px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:16px}
+    header h1{margin:0;font-size:18px}
+    main{display:flex;gap:16px;padding:18px}
+    .left{width:40%;min-width:300px;padding:8px}
+    .right{flex:1;padding:8px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 6px;text-align:left;border-bottom:1px solid #f0f0f5}
+    tr:hover{background:#fbfdff}
+    .controls{display:flex;gap:8px;margin:10px 0}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+    button.ghost{background:#fff;color:var(--accent);border:1px solid #ddd}
+    .panel{background:#fff;padding:12px;border-radius:10px;box-shadow:0 4px 14px rgba(20,20,60,0.02)}
+    .detail pre{white-space:pre-wrap;font-family:inherit;margin:0}
+    .big{font-weight:700;font-size:22px}
+    .status.low{color:green}
+    .status.mod{color:orange}
+    .status.high{color:#d9534f}
+    input[type=text],input[type=number]{width:100%;padding:8px;border:1px solid #e6e6ee;border-radius:8px}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+    .row{display:flex;gap:8px}
+    .col{flex:1}
+    footer{padding:12px 18px;border-top:1px solid #f0f0f5;text-align:right}
+    .small{font-size:12px;color:var(--muted)}
+    .file-input{display:none}
+    .table-fixed{max-height:360px;overflow:auto}
+    .muted{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><rect rx='6' width='28' height='28' fill='%232b7a78'/><path d='M7 16c2-3 7-6 12-4' stroke='white' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>" alt="logo"/>
+      <div>
+        <h1>AI Health Assistance — Web Dashboard</h1>
+        <div class="small">Rule-based risk assessment • Runs in browser • No server required</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="left">
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong>Patients</strong>
+              <div class="muted">Click a row to view details</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="addBtn">Add</button>
+              <button id="importBtn" class="ghost">Import</button>
+              <button id="exportBtn" class="ghost">Export</button>
+            </div>
+          </div>
+
+          <div class="table-fixed" style="margin-top:10px">
+            <table id="patientsTbl">
+              <thead><tr><th>ID</th><th>Name</th><th>Age</th><th>Sex</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>Quick Vitals</strong><div class="muted">Update selected patient's vitals</div></div>
+            <button id="updateVitalsBtn" class="ghost">Update Vitals</button>
+          </div>
+          <div style="margin-top:10px">
+            <div class="row">
+              <div class="col"><label>Heart Rate (bpm)</label><input id="q_hr" type="number"/></div>
+              <div class="col"><label>SpO₂ (%)</label><input id="q_spo2" type="number"/></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="col"><label>BP Sys</label><input id="q_bpSys" type="number"/></div>
+              <div class="col"><label>BP Dia</label><input id="q_bpDia" type="number"/></div>
+            </div>
+            <div style="margin-top:8px">
+              <label>Temp (°C)</label>
+              <input id="q_temp" type="number" step="0.1"/>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="right">
+        <div class="panel detail">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div id="name" class="big">—</div>
+              <div class="muted" id="meta">ID: — • Age: — • Sex: —</div>
+            </div>
+            <div style="text-align:right">
+              <div id="bmi" class="muted">BMI: —</div>
+              <div id="risk" class="big">Risk: —</div>
+            </div>
+          </div>
+
+          <hr style="margin:12px 0;border:none;border-top:1px dashed #eee"/>
+
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <strong>Latest Vitals</strong>
+              <pre id="vitals">—</pre>
+            </div>
+            <div style="width:260px">
+              <strong>Guidance</strong>
+              <pre id="guidance">—</pre>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+            <button id="calcBMIBtn" class="ghost">Calc BMI</button>
+            <button id="deleteBtn" class="ghost" style="color:#b33;border:1px solid #f4c">Delete</button>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="panel">
+          <strong>Patient Form</strong>
+          <div style="margin-top:8px">
+            <div class="row">
+              <div class="col"><label>ID</label><input id="f_id" type="text"/></div>
+              <div class="col"><label>Name</label><input id="f_name" type="text"/></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="col"><label>Age</label><input id="f_age" type="number"/></div>
+              <div class="col"><label>Sex</label><input id="f_sex" type="text"/></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="col"><label>Weight (kg)</label><input id="f_weight" type="number" step="0.1"/></div>
+              <div class="col"><label>Height (cm)</label><input id="f_height" type="number" step="0.1"/></div>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+              <button id="saveBtn">Save</button>
+              <button id="clearBtn" class="ghost">Clear</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <footer>
+      <span class="small">Data stored locally in browser (localStorage). CSV import expects header: id,name,age,sex,weightKg,heightCm,heartRate,bpSys,bpDia,tempC,spo2</span>
+    </footer>
+
+    <input id="fileInput" class="file-input" type="file" accept="text/csv" />
+  </div>
+
+  <script>
+    // Simple in-browser AI Health Assistance dashboard
+    // Data model: patients array of objects
+
+    const sample = [
+      {id:'P001',name:'Rohit Sharma',age:34,sex:'M',weightKg:72,heightCm:175,heartRate:78,bpSys:120,bpDia:80,tempC:36.6,spo2:98},
+      {id:'P002',name:'Ananya Singh',age:28,sex:'F',weightKg:60,heightCm:162,heartRate:86,bpSys:130,bpDia:85,tempC:37.2,spo2:96},
+      {id:'P003',name:'Vikram Patel',age:58,sex:'M',weightKg:85,heightCm:168,heartRate:95,bpSys:150,bpDia:95,tempC:38.0,spo2:92}
+    ];
+
+    const LS_KEY = 'ai_health_patients_v1';
+    let patients = loadPatients();
+    let selectedId = patients.length?patients[0].id:null;
+
+    // --- DOM refs ---
+    const tbody = document.querySelector('#patientsTbl tbody');
+    const nameEl = document.getElementById('name');
+    const metaEl = document.getElementById('meta');
+    const vitalsEl = document.getElementById('vitals');
+    const guidanceEl = document.getElementById('guidance');
+    const bmiEl = document.getElementById('bmi');
+    const riskEl = document.getElementById('risk');
+
+    function loadPatients(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) { localStorage.setItem(LS_KEY, JSON.stringify(sample)); return JSON.parse(JSON.stringify(sample)); }
+        return JSON.parse(raw);
+      }catch(e){ console.error(e); localStorage.removeItem(LS_KEY); return JSON.parse(JSON.stringify(sample)); }
+    }
+
+    function savePatients(){ localStorage.setItem(LS_KEY, JSON.stringify(patients)); }
+
+    function renderTable(){
+      tbody.innerHTML = '';
+      for(const p of patients){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(p.id)}</td><td>${escapeHtml(p.name)}</td><td>${p.age||''}</td><td>${escapeHtml(p.sex||'')}</td>`;
+        tr.addEventListener('click',()=>{ selectedId = p.id; renderSelected(); highlightRow(p.id)});
+        tr.dataset.id = p.id;
+        tbody.appendChild(tr);
+      }
+      highlightRow(selectedId);
+    }
+
+    function highlightRow(id){
+      for(const r of tbody.querySelectorAll('tr')) r.style.background='';
+      const row = tbody.querySelector(`tr[data-id="${id}"]`);
+      if(row) row.style.background='#eef9ff';
+    }
+
+    function getById(id){ return patients.find(x=>x.id===id); }
+
+    function renderSelected(){
+      if(!selectedId){ nameEl.textContent='—'; metaEl.textContent='ID: —'; vitalsEl.textContent='—'; guidanceEl.textContent='—'; bmiEl.textContent='BMI: —'; riskEl.textContent='Risk: —'; return; }
+      const p = getById(selectedId);
+      if(!p) return;
+      nameEl.textContent = p.name || '—';
+      metaEl.textContent = `ID: ${p.id} • Age: ${p.age||'—'} • Sex: ${p.sex||'—'}`;
+      vitalsEl.textContent = `Heart Rate: ${p.heartRate||'—'} bpm\nBP: ${p.bpSys||'—'} / ${p.bpDia||'—'} mmHg\nTemp: ${p.tempC||'—'} °C\nSpO2: ${p.spo2||'—'} %\nWeight: ${p.weightKg||'—'} kg\nHeight: ${p.heightCm||'—'} cm`;
+      const score = computeRiskScore(p);
+      const level = riskLabel(score);
+      riskEl.textContent = `Risk: ${level}`;
+      riskEl.className = level==='High'?'status high': level==='Moderate'?'status mod':'status low';
+      bmiEl.textContent = `BMI: ${Number.isFinite(bmi(p))?bmi(p).toFixed(2):'—'}`;
+      guidanceEl.textContent = guidanceText(score,p);
+      // fill quick vitals inputs with current
+      document.getElementById('q_hr').value = p.heartRate||'';
+      document.getElementById('q_spo2').value = p.spo2||'';
+      document.getElementById('q_bpSys').value = p.bpSys||'';
+      document.getElementById('q_bpDia').value = p.bpDia||'';
+      document.getElementById('q_temp').value = p.tempC||'';
+      // fill form
+      document.getElementById('f_id').value = p.id;
+      document.getElementById('f_name').value = p.name;
+      document.getElementById('f_age').value = p.age;
+      document.getElementById('f_sex').value = p.sex;
+      document.getElementById('f_weight').value = p.weightKg;
+      document.getElementById('f_height').value = p.heightCm;
+    }
+
+    // --- risk logic (same as Java demo but in JS) ---
+    function computeRiskScore(p){
+      let score = 0;
+      if(p.heartRate){
+        if(p.heartRate < 50 || p.heartRate > 100) score += 2;
+        else if(p.heartRate > 90) score += 1;
+      }
+      if(p.bpSys >= 140 || p.bpDia >= 90) score += 2;
+      else if(p.bpSys >= 130 || p.bpDia >= 85) score += 1;
+      if(p.tempC >= 39.0) score += 3;
+      else if(p.tempC >= 37.5) score += 1;
+      if(p.spo2 && p.spo2 < 94) score += 3;
+      else if(p.spo2 && p.spo2 < 96) score += 1;
+      const b = bmi(p);
+      if(Number.isFinite(b)){
+        if(b >= 30) score += 2;
+        else if(b < 18.5) score += 1;
+      }
+      return score;
+    }
+
+    function riskLabel(score){ if(score >= 6) return 'High'; if(score >= 3) return 'Moderate'; return 'Low'; }
+
+    function guidanceText(score,p){
+      if(score >= 6) return `- High risk: urgent clinical review recommended.\n- Consider oxygen therapy if SpO₂ <94%.\n- Contact emergency services if severe symptoms.`;
+      if(score >= 3) return `- Moderate risk: arrange GP/clinic follow-up within 24-72 hours.\n- Re-check vitals and watch for worsening.`;
+      return `- Low risk: routine follow-up and healthy lifestyle advice.\n- Monitor temperature and symptoms.`;
+    }
+
+    function bmi(p){ if(!p || !p.weightKg || !p.heightCm) return NaN; const h = p.heightCm/100; return p.weightKg/(h*h); }
+
+    // --- UI actions ---
+    document.getElementById('addBtn').addEventListener('click', ()=>{
+      selectedId = null; renderSelected(); clearForm(); document.getElementById('f_id').focus();
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', ()=>{
+      const id = (document.getElementById('f_id').value||'').trim();
+      const name = (document.getElementById('f_name').value||'').trim();
+      if(!id || !name){ alert('ID and Name required'); return; }
+      const age = Number(document.getElementById('f_age').value) || 0;
+      const sex = (document.getElementById('f_sex').value||'').trim();
+      const weightKg = Number(document.getElementById('f_weight').value) || 0;
+      const heightCm = Number(document.getElementById('f_height').value) || 0;
+      const exists = getById(id);
+      if(exists){ // update
+        exists.name = name; exists.age = age; exists.sex = sex; exists.weightKg = weightKg; exists.heightCm = heightCm;
+      } else {
+        patients.push({id,name,age,sex,weightKg,heightCm,heartRate:0,bpSys:0,bpDia:0,tempC:0,spo2:0});
+      }
+      savePatients(); renderTable(); selectedId = id; renderSelected();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', clearForm);
+    function clearForm(){ document.getElementById('f_id').value=''; document.getElementById('f_name').value=''; document.getElementById('f_age').value=''; document.getElementById('f_sex').value=''; document.getElementById('f_weight').value=''; document.getElementById('f_height').value=''; }
+
+    document.getElementById('deleteBtn').addEventListener('click', ()=>{
+      if(!selectedId) return alert('Select a patient to delete');
+      if(!confirm('Delete patient '+selectedId+'?')) return;
+      patients = patients.filter(p=>p.id!==selectedId); savePatients(); renderTable(); selectedId = patients.length?patients[0].id:null; renderSelected();
+    });
+
+    document.getElementById('updateVitalsBtn').addEventListener('click', ()=>{
+      if(!selectedId) return alert('Select a patient first');
+      const p = getById(selectedId);
+      if(!p) return;
+      const hr = Number(document.getElementById('q_hr').value) || 0;
+      const spo2 = Number(document.getElementById('q_spo2').value) || 0;
+      const bpSys = Number(document.getElementById('q_bpSys').value) || 0;
+      const bpDia = Number(document.getElementById('q_bpDia').value) || 0;
+      const tempC = Number(document.getElementById('q_temp').value) || 0;
+      p.heartRate = hr; p.spo2 = spo2; p.bpSys = bpSys; p.bpDia = bpDia; p.tempC = tempC;
+      savePatients(); renderSelected(); renderTable();
+    });
+
+    document.getElementById('calcBMIBtn').addEventListener('click', ()=>{
+      if(!selectedId) return alert('Select a patient'); const p=getById(selectedId); const b=bmi(p); if(!Number.isFinite(b)) return alert('Height or weight missing'); alert('BMI for '+p.name+' = '+b.toFixed(2)+' ('+bmiCategory(b)+')');
+    });
+
+    function bmiCategory(b){ if(b<18.5) return 'Underweight'; if(b<25) return 'Normal'; if(b<30) return 'Overweight'; return 'Obese'; }
+
+    // CSV export
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      const header = 'id,name,age,sex,weightKg,heightCm,heartRate,bpSys,bpDia,tempC,spo2\n';
+      const rows = patients.map(p => [p.id, p.name, p.age, p.sex, p.weightKg, p.heightCm, p.heartRate, p.bpSys, p.bpDia, p.tempC, p.spo2]
+        .map(csvEscape).join(',')).join('\n');
+      const csv = header + rows;
+      const blob = new Blob([csv],{type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'patients.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // CSV import
+    document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('fileInput').click());
+    document.getElementById('fileInput').addEventListener('change', (ev)=>{
+      const f = ev.target.files[0]; if(!f) return; const reader = new FileReader();
+      reader.onload = e => { parseCsvString(e.target.result); ev.target.value=''; };
+      reader.readAsText(f);
+    });
+
+    function parseCsvString(text){
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      if(lines.length < 2) return alert('CSV appears empty');
+      const hdr = lines.shift().split(',').map(s=>s.trim());
+      const expected = ['id','name','age','sex','weightKg','heightCm','heartRate','bpSys','bpDia','tempC','spo2'];
+      // not strict: try to map
+      for(const ln of lines){
+        const parts = splitCsvLine(ln);
+        if(parts.length < 2) continue;
+        const row = {}; for(let i=0;i<parts.length;i++){ row[hdr[i]||i]=parts[i]; }
+        const id = row['id'] || row[0]; if(!id) continue;
+        const existing = getById(id);
+        const obj = {
+          id: id,
+          name: row['name'] || row[1] || '',
+          age: Number(row['age']||row[2]||0),
+          sex: row['sex']||row[3]||'',
+          weightKg: Number(row['weightKg']||row[4]||0),
+          heightCm: Number(row['heightCm']||row[5]||0),
+          heartRate: Number(row['heartRate']||row[6]||0),
+          bpSys: Number(row['bpSys']||row[7]||0),
+          bpDia: Number(row['bpDia']||row[8]||0),
+          tempC: Number(row['tempC']||row[9]||0),
+          spo2: Number(row['spo2']||row[10]||0)
+        };
+        if(existing){ Object.assign(existing, obj); } else { patients.push(obj); }
+      }
+      savePatients(); renderTable(); selectedId = patients[0]?.id || null; renderSelected(); alert('Import complete');
+    }
+
+    // helpers
+    function splitCsvLine(line){ // naive quoted-support
+      const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(inQ){ if(c==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else inQ=false; } else cur+=c; } else { if(c==='"') inQ=true; else if(c===','){ out.push(cur); cur=''; } else cur+=c; } } out.push(cur); return out; }
+    function csvEscape(v){ if(v==null) return ''; const s = String(v); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"'+s.replace(/"/g,'""')+'"'; return s; }
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // utility: select first on load
+    document.addEventListener('DOMContentLoaded', ()=>{ renderTable(); if(!selectedId && patients.length) selectedId = patients[0].id; renderSelected(); });
+
+    // allow quick keyboard: Enter on form id to save
+    document.getElementById('f_id').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('saveBtn').click(); });
+
+  </script>
+</body>
+</html>
